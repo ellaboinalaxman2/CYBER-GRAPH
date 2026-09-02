@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# Hardhat & Solidity
+node_modules/
+artifacts/
+cache/
+typechain/
+typechain-types/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & Storage
+*.log
+storage/*.db
+storage/*.sqlite
+
+# OS generated
+.DS_Store
+Thumbs.db

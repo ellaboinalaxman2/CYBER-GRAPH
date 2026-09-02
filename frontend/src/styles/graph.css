@@ -1,0 +1,40 @@
+/* Graph Visualization Specific Styles */
+
+.cytoscape-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: radial-gradient(circle at center, #0f172a 0%, #0a0d14 100%);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.graph-canvas {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.graph-canvas:active {
+  cursor: grabbing;
+}
+
+.graph-node-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+/* Attack path highlight animation */
+@keyframes attackPulse {
+  0% {
+    stroke-dashoffset: 24;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.attack-path-animated {
+  stroke-dasharray: 6 6;
+  animation: attackPulse 1.5s linear infinite;
+}

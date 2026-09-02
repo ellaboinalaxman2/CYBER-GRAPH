@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+motor
+neo4j
+python-dotenv
+pyjwt
+httpx
+python-multipart>=0.0.6
+pydantic-settings
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+pymongo
+web3
