@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import DuplicateKeyError
+from typing import Dict, Any
 
 from src.core.logging import get_logger
 from src.core.exceptions import MongoDBError, DocumentNotFoundError
@@ -35,8 +36,12 @@ class IncidentRepository:
             self.collection.create_index("severity")
             self.collection.create_index("status")
             self.collection.create_index("assigned_to")
-            self.collection.create_index("started_at", DESCENDING)
-            self.collection.create_index("risk_score", DESCENDING)
+            self.collection.create_index([
+    ("started_at", DESCENDING)
+])
+            self.collection.create_index([
+    ("risk_score", DESCENDING)
+])
             self.collection.create_index([
                 ("severity", ASCENDING),
                 ("status", ASCENDING),

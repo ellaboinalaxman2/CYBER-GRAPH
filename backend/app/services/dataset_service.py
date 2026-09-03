@@ -38,8 +38,6 @@ COLUMN_NAME_MAPPING = {
     "protocol": ["protocol", "proto", "ip_proto", "ip_protocol", "prtcl"],
 }
 
-# Import settings to use consistent max upload bytes
-from app.config.settings import settings
 MAX_UPLOAD_BYTES = settings.MAX_UPLOAD_BYTES
 
 
@@ -86,7 +84,8 @@ class DatasetService:
         if size <= 0:
             raise HTTPException(status_code=400, detail="The uploaded file is empty.")
         if size > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="File exceeds maximum allowed size.")
+            max_kb = MAX_UPLOAD_BYTES // 1024
+            raise HTTPException(status_code=413, detail=f"File exceeds the maximum allowed size of {max_kb:,} KB.")
         if content_type and content_type not in {"text/csv", "application/csv", "application/vnd.ms-excel", "application/octet-stream"}:
             raise HTTPException(status_code=400, detail="Unsupported file type.")
 

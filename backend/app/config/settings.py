@@ -27,6 +27,9 @@ class Settings:
     AI_ENGINE_URL = os.getenv("AI_ENGINE_URL", "http://localhost:8002")
     ATTACK_ENGINE_URL = os.getenv("ATTACK_ENGINE_URL", "http://localhost:8004")
     UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(os.getcwd(), "uploads"))
-    MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(500 * 1024 * 1024)))
+    # 100 MiB is large enough for full CICIDS/log exports while
+    # still providing a server-side guardrail.  It can be increased per
+    # deployment through MAX_UPLOAD_BYTES.
+    MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(100 * 1024 * 1024)))
 
 settings = Settings()

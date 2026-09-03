@@ -30,6 +30,10 @@ const STATUS_MESSAGES = {
   FAILED: "Processing failed.",
 };
 
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+const MAX_UPLOAD_LABEL = "100 MB";
+const UPLOAD_TIMEOUT_MS = Number(import.meta.env.VITE_UPLOAD_TIMEOUT_MS) || 30 * 60 * 1000;
+
 export const UploadDataset = ({ onUploadComplete }) => {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
@@ -71,6 +75,10 @@ export const UploadDataset = ({ onUploadComplete }) => {
       setError("Please select a valid CSV file (CICIDS2017 format).");
       return;
     }
+    if (selectedFile.size > MAX_UPLOAD_BYTES) {
+      setError(`The selected file exceeds the ${MAX_UPLOAD_LABEL} upload limit.`);
+      return;
+    }
     setFile(selectedFile);
   };
 
@@ -88,6 +96,8 @@ export const UploadDataset = ({ onUploadComplete }) => {
         headers: {
           "Content-Type": "multipart/form-data",
         },
+        // Large files can take longer than the standard 10-second API timeout.
+        timeout: UPLOAD_TIMEOUT_MS,
       });
       setDatasetId(res.dataset_id || res.datasetId);
       setStatus("UPLOADED");
@@ -190,7 +200,7 @@ export const UploadDataset = ({ onUploadComplete }) => {
                 Drag and drop your CSV dataset here
               </p>
               <p className="text-slate-500 text-xs mb-6">
-                Support for CICIDS2017 formatted pcaps/csv
+                CICIDS2017 CSV files supported, up to {MAX_UPLOAD_LABEL}
               </p>
             </>
           )}

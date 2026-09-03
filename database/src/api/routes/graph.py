@@ -196,6 +196,276 @@ async def create_relationship(
     except Neo4jError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+@router.post("/events")
+async def create_event_graph(
+    event: Dict[str, Any],
+):
+    """
+    Convert a normalized security event into Neo4j graph data.
+
+    Creates:
+        Source Node
+        Destination Node
+        Relationship between them
+    """
+
+    try:
+        # ---------------------------------------------------------
+        # Check Neo4j
+        # ---------------------------------------------------------
+
+        from src.neo4j.connection import neo4j
+
+        if not neo4j.is_connected():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Neo4j is not connected",
+            )
+
+        # ---------------------------------------------------------
+        # Extract source / destination
+        # ---------------------------------------------------------
+
+        source = event.get("source") or {}
+        destination = event.get("destination") or {}
+
+        source_id = (
+            source.get("hostname")
+            or source.get("ip")
+        )
+
+        destination_id = (
+            destination.get("hostname")
+            or destination.get("ip")
+        )
+
+        if not source_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Event does not contain source hostname or source IP",
+            )
+
+        if not destination_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Event does not contain destination hostname or destination IP",
+            )
+
+        # ---------------------------------------------------------
+        # Determine node types
+        # ---------------------------------------------------------
+
+        source_type = (
+            source.get("device_type")
+            or "DEVICE"
+        )
+
+        destination_type = (
+            destination.get("device_type")
+            or "SERVER"
+        )
+
+        source_type = str(source_type).upper()
+        destination_type = str(destination_type).upper()
+
+        valid_node_types = {
+            "DEVICE",
+            "SERVER",
+            "DATABASE",
+            "USER",
+            "IP",
+            "PROCESS",
+            "APPLICATION",
+            "FIREWALL",
+            "WORKSTATION",
+            "UNKNOWN",
+        }
+
+        if source_type not in valid_node_types:
+            source_type = "DEVICE"
+
+        if destination_type not in valid_node_types:
+            destination_type = "SERVER"
+
+        # ---------------------------------------------------------
+        # Node properties
+        # ---------------------------------------------------------
+
+        source_properties = {
+            "ip": source.get("ip"),
+            "hostname": source.get("hostname"),
+            "port": source.get("port"),
+            "user": source.get("user"),
+        }
+
+        destination_properties = {
+            "ip": destination.get("ip"),
+            "hostname": destination.get("hostname"),
+            "port": destination.get("port"),
+            "user": destination.get("user"),
+        }
+
+        # Remove None values
+        source_properties = {
+            k: v
+            for k, v in source_properties.items()
+            if v is not None
+        }
+
+        destination_properties = {
+            k: v
+            for k, v in destination_properties.items()
+            if v is not None
+        }
+
+        # ---------------------------------------------------------
+        # Create source node
+        # ---------------------------------------------------------
+
+        source_node = node_repo.create_node(
+            node_id=str(source_id),
+            node_type=source_type,
+            properties=source_properties,
+        )
+
+        # ---------------------------------------------------------
+        # Create destination node
+        # ---------------------------------------------------------
+
+        destination_node = node_repo.create_node(
+            node_id=str(destination_id),
+            node_type=destination_type,
+            properties=destination_properties,
+        )
+
+        # ---------------------------------------------------------
+        # Determine relationship
+        # ---------------------------------------------------------
+
+        event_type = str(
+            event.get("event_type", "")
+        ).upper()
+
+        action = str(
+            event.get("action", "")
+        ).upper()
+
+        if event_type in {
+            "LOGIN",
+            "LOGIN_SUCCESS",
+            "AUTHENTICATION",
+        }:
+            relationship_type = "AUTHENTICATES_TO"
+
+        elif event_type in {
+            "ACCESS",
+            "FILE_ACCESS",
+            "DATABASE_ACCESS",
+        }:
+            relationship_type = "ACCESSES"
+
+        elif event_type in {
+            "PROCESS_START",
+            "PROCESS_EXECUTION",
+        }:
+            relationship_type = "RUNS"
+
+        elif event_type in {
+            "LATERAL_MOVEMENT",
+        }:
+            relationship_type = "LATERAL_MOVEMENT"
+
+        elif event_type in {
+            "ATTACK",
+            "INTRUSION",
+        }:
+            relationship_type = "ATTACKS"
+
+        else:
+            relationship_type = "CONNECTS_TO"
+
+        # ---------------------------------------------------------
+        # Relationship properties
+        # ---------------------------------------------------------
+
+        relationship_properties = {
+            "event_id": event.get("event_id"),
+            "event_type": event.get("event_type"),
+            "timestamp": str(event.get("timestamp")),
+            "protocol": event.get("protocol"),
+            "action": action,
+            "severity": str(event.get("severity")),
+            "source_ip": source.get("ip"),
+            "source_port": source.get("port"),
+            "destination_ip": destination.get("ip"),
+            "destination_port": destination.get("port"),
+            "raw_source": event.get("raw_source"),
+        }
+
+        # Remove None values
+        relationship_properties = {
+            k: v
+            for k, v in relationship_properties.items()
+            if v is not None
+        }
+
+        # ---------------------------------------------------------
+        # Create relationship
+        # ---------------------------------------------------------
+
+        relationship = graph_repo.create_relationship(
+            source_id=str(source_id),
+            target_id=str(destination_id),
+            relationship_type=relationship_type,
+            properties=relationship_properties,
+        )
+
+        # ---------------------------------------------------------
+        # Return
+        # ---------------------------------------------------------
+
+        return {
+            "status": "stored",
+            "event_id": event.get("event_id"),
+            "source_node": {
+                "id": source_id,
+                "type": source_type,
+            },
+            "destination_node": {
+                "id": destination_id,
+                "type": destination_type,
+            },
+            "relationship": {
+                "type": relationship_type,
+                "source": source_id,
+                "target": destination_id,
+            },
+            "neo4j": True,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+
+    except HTTPException:
+        raise
+
+    except Neo4jError as e:
+        logger.error(
+            f"Neo4j event storage failed: {e}"
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+    except Exception as e:
+        logger.exception(
+            f"Unexpected graph event error: {e}"
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Graph event storage failed: {str(e)}",
+        )
 
 @router.get("/paths")
 async def find_path(

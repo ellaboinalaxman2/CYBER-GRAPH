@@ -1,5 +1,5 @@
 """Event index management for MongoDB."""
-
+from typing import Dict, Any, List
 from src.core.logging import get_logger
 from src.mongodb.connection import mongodb
 

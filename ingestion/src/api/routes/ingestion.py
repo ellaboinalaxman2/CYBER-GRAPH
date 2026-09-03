@@ -172,29 +172,106 @@ async def ingest_event(
     rate_limit: dict = Depends(rate_limit_user()),
 ):
     """
-    Ingest a raw event into the system.
-    
-    Args:
-        event: RawEvent to ingest
-        
-    Returns:
-        dict: Ingestion status
+    Receive, process and store a security event.
+
+    Flow:
+
+        Raw Event
+            ↓
+        Pipeline
+            ↓
+        Normalization
+            ↓
+        Validation
+            ↓
+        Enrichment
+            ↓
+        Database Engine
+            ↓
+        Neo4j
     """
+
     logger.info(
-        f"User {current_user['username']} ingested event from {event.raw_source}",
-        extra={"source": event.raw_source, "user": current_user["username"]},
+        f"User {current_user['username']} "
+        f"ingested event from {event.raw_source}",
+        extra={
+            "source": event.raw_source,
+            "user": current_user["username"],
+        },
     )
-    
-    return {
-        "status": "received",
-        "source": event.raw_source,
-        "collected_at": event.collected_at.isoformat() + "Z",
-        "event_id": f"RAW-{datetime.utcnow().timestamp()}",
-        "user": current_user["username"],
-        "message": "Event received successfully",
-    }
 
+    try:
 
+        # ---------------------------------------------------------
+        # Convert Pydantic event to dictionary
+        # ---------------------------------------------------------
+
+        event_data = event.model_dump(
+            mode="json"
+        )
+
+        # ---------------------------------------------------------
+        # Process event through worker
+        # ---------------------------------------------------------
+
+        result = _event_worker.process(
+            event_data
+        )
+
+        # ---------------------------------------------------------
+        # Return successful result
+        # ---------------------------------------------------------
+
+        return {
+            "status": "stored",
+
+            "source": event.raw_source,
+
+            "event_id": result.get(
+                "event_id"
+            ),
+
+            "run_id": result.get(
+                "run_id"
+            ),
+
+            "processing_time_ms":
+                result.get(
+                    "processing_time_ms"
+                ),
+
+            "stage_count":
+                result.get(
+                    "stage_count"
+                ),
+
+            "neo4j": True,
+
+            "graph":
+                result.get(
+                    "graph"
+                ),
+
+            "user":
+                current_user["username"],
+
+            "timestamp":
+                datetime.utcnow().isoformat() + "Z",
+
+            "message":
+                "Event processed and stored in Neo4j successfully",
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            f"Event ingestion failed: {e}"
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Event ingestion failed: {str(e)}",
+        )
 @router.post("/events/batch")
 async def ingest_events_batch(
     events: List[RawEvent],
@@ -202,27 +279,81 @@ async def ingest_events_batch(
     rate_limit: dict = Depends(rate_limit_user()),
 ):
     """
-    Ingest multiple raw events in batch.
-    
-    Args:
-        events: List of RawEvent to ingest
-        
-    Returns:
-        dict: Batch ingestion status
+    Process and store a batch of security events.
     """
-    logger.info(
-        f"User {current_user['username']} ingested batch of {len(events)} raw events",
-        extra={"count": len(events), "user": current_user["username"]},
-    )
-    
-    return {
-        "status": "received",
-        "total_received": len(events),
-        "user": current_user["username"],
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "message": f"Received {len(events)} events successfully",
-    }
 
+    logger.info(
+        f"User {current_user['username']} "
+        f"submitted {len(events)} events"
+    )
+
+    results = []
+
+    success_count = 0
+    failed_count = 0
+
+    for event in events:
+
+        try:
+
+            event_data = event.model_dump(
+                mode="json"
+            )
+
+            result = _event_worker.process(
+                event_data
+            )
+
+            results.append({
+                "status": "success",
+                "event_id": result.get(
+                    "event_id"
+                ),
+                "neo4j": True,
+                "graph": result.get(
+                    "graph"
+                ),
+            })
+
+            success_count += 1
+
+        except Exception as e:
+
+            logger.error(
+                f"Failed to process event: {e}"
+            )
+
+            results.append({
+                "status": "failed",
+                "error": str(e),
+            })
+
+            failed_count += 1
+
+    return {
+        "status": "completed",
+
+        "total_received":
+            len(events),
+
+        "success_count":
+            success_count,
+
+        "failed_count":
+            failed_count,
+
+        "neo4j":
+            success_count > 0,
+
+        "results":
+            results,
+
+        "user":
+            current_user["username"],
+
+        "timestamp":
+            datetime.utcnow().isoformat() + "Z",
+    }
 
 # ============================================================================
 # Collection Endpoints

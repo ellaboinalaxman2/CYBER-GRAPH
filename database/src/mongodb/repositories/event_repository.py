@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import DuplicateKeyError
+from typing import Dict, Any
 
 from src.core.logging import get_logger
 from src.core.exceptions import MongoDBError, DocumentNotFoundError
@@ -32,7 +33,7 @@ class EventRepository:
         try:
             # Single field indexes
             self.collection.create_index("event_id", unique=True)
-            self.collection.create_index("timestamp", DESCENDING)
+            self.collection.create_index([("timestamp", DESCENDING)])
             self.collection.create_index("event_type")
             self.collection.create_index("severity")
             self.collection.create_index("source_ip")

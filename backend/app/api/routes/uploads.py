@@ -11,6 +11,7 @@ from app.config.settings import settings
 from app.services.dataset_service import DatasetService
 
 router = APIRouter(prefix="/api/logs", tags=["datasets"])
+UPLOAD_CHUNK_BYTES = 1024 * 1024
 
 
 def _safe_name(filename: str) -> str:
@@ -20,14 +21,27 @@ def _safe_name(filename: str) -> str:
 @router.post("/upload", status_code=202)
 async def upload_file(request: Request, background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     user_id = getattr(request.state, "user", {}).get("userId", "anonymous")
-    safe_name, content = _safe_name(file.filename), await file.read()
-    DatasetService.validate_upload(safe_name, file.content_type, len(content))
+    safe_name = _safe_name(file.filename)
+    DatasetService.validate_upload(safe_name, file.content_type, 1)
 
     upload_dir = Path(settings.UPLOAD_DIR).resolve()
     upload_dir.mkdir(parents=True, exist_ok=True)
-    dataset_id, file_path = str(uuid.uuid4()), None
+    dataset_id = str(uuid.uuid4())
     file_path = upload_dir / f"{dataset_id}_{safe_name}"
-    file_path.write_bytes(content)
+    size = 0
+    try:
+        # Stream the spooled upload to disk so a 100,000 KB file is not copied
+        # in full into the API process memory.
+        with file_path.open("wb") as destination:
+            while chunk := await file.read(UPLOAD_CHUNK_BYTES):
+                size += len(chunk)
+                DatasetService.validate_upload(safe_name, file.content_type, size)
+                destination.write(chunk)
+    except Exception:
+        file_path.unlink(missing_ok=True)
+        raise
+    finally:
+        await file.close()
 
     try:
         DatasetService.validate_csv_header(str(file_path))
@@ -38,13 +52,13 @@ async def upload_file(request: Request, background_tasks: BackgroundTasks, file:
     if MongoDB.get_db() is not None:
         await MongoDB.get_db().datasets.insert_one({
             "dataset_id": dataset_id, "user_id": user_id, "file_name": safe_name,
-            "original_name": file.filename, "file_size": len(content), "dataset_type": "CICIDS2017",
+            "original_name": file.filename, "file_size": size, "dataset_type": "CICIDS2017",
             "status": "UPLOADED", "progress": 5, "uploaded_at": datetime.utcnow(),
             "total_records": 0, "processed_records": 0, "normal_records": 0, "attack_records": 0,
         })
     else:
         DatasetService.set_dataset_state(dataset_id, user_id, "UPLOADED", 5, file_name=safe_name, original_name=file.filename,
-                                        file_size=len(content), dataset_type="CICIDS2017", uploaded_at=datetime.utcnow().isoformat(),
+                                        file_size=size, dataset_type="CICIDS2017", uploaded_at=datetime.utcnow().isoformat(),
                                         total_records=0, processed_records=0, normal_records=0, attack_records=0)
 
     background_tasks.add_task(DatasetService.process_dataset, dataset_id, user_id, str(file_path))
