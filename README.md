@@ -1,4 +1,3 @@
-````markdown
 # 🛡️ CYBER-GRAPH
 
 ### AI-Powered Cyber Attack Detection and Attack Path Reconstruction
@@ -13,10 +12,10 @@ Traditional cybersecurity systems usually generate individual alerts.
 
 For example:
 
-- PC-01 has a failed login
-- Server-01 receives an unusual SSH connection
-- Server-02 shows suspicious activity
-- Database-01 is accessed unexpectedly
+* **PC-01** has a failed login
+* **Server-01** receives an unusual SSH connection
+* **Server-02** shows suspicious activity
+* **Database-01** is accessed unexpectedly
 
 Individually, these events may not look dangerous.
 
@@ -30,7 +29,7 @@ Server-01
 Server-02
   ↓
 Database
-````
+```
 
 The main problem is that security analysts have to manually correlate these events and understand how the attack moved through the network.
 
@@ -468,170 +467,3 @@ Blockchain Integrity: ✅ VERIFIED
 | Authentication      | JWT                          |
 | Audit / Integrity   | Blockchain                   |
 | Containerization    | Docker                       |
-| Version Control     | Git, GitHub                  |
-
----
-
-# 📁 Project Structure
-
-```text
-CYBER-GRAPH/
-│
-├── backend/
-│   ├── api/
-│   ├── models/
-│   ├── services/
-│   ├── database/
-│   ├── graph/
-│   ├── ml/
-│   ├── risk_engine/
-│   ├── blockchain/
-│   └── main.py
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   └── App.jsx
-│   └── package.json
-│
-├── dataset/
-│   └── CICIDS2017/
-│
-├── models/
-│   └── graphsage/
-│
-├── docker/
-│
-├── README.md
-└── .gitignore
-```
-
----
-
-# 🚀 Main Features
-
-### 1. AI Attack Detection
-
-Detects suspicious network behavior using GraphSAGE.
-
-### 2. Graph-Based Security Analysis
-
-Represents devices and their relationships as a graph.
-
-### 3. Event Correlation
-
-Connects multiple security events into meaningful incidents.
-
-### 4. Attack Path Reconstruction
-
-Identifies the probable path followed during an attack.
-
-### 5. Risk Assessment
-
-Assigns a risk score to each incident.
-
-### 6. MITRE ATT&CK Mapping
-
-Maps detected behavior to known attack techniques.
-
-### 7. Blockchain Audit
-
-Provides tamper-evident verification of important security records.
-
-### 8. Security Dashboard
-
-Provides analysts with a visual representation of attacks, devices, paths and risks.
-
----
-
-# 🌟 What Makes CYBER-GRAPH Different?
-
-Traditional IDS:
-
-```text
-Attack
-  ↓
-"Attack Detected"
-```
-
-CYBER-GRAPH:
-
-```text
-Attack
-  ↓
-Detect Suspicious Activity
-  ↓
-Correlate Events
-  ↓
-Build Security Graph
-  ↓
-Reconstruct Attack Path
-  ↓
-Calculate Risk
-  ↓
-Map MITRE ATT&CK
-  ↓
-Verify Security Record
-  ↓
-Show Complete Incident
-```
-
-The main contribution of CYBER-GRAPH is the **combination of graph-based AI, attack-path reconstruction, risk analysis, MITRE ATT&CK mapping, and blockchain-based audit integrity**.
-
----
-
-# 🎯 Project Goal
-
-The goal of CYBER-GRAPH is to help security analysts move from simply knowing that an attack occurred to understanding:
-
-```text
-WHAT happened?
-        ↓
-WHERE did it happen?
-        ↓
-HOW did the attack move?
-        ↓
-WHAT systems are at risk?
-        ↓
-WHAT technique was used?
-        ↓
-CAN the incident record be trusted?
-```
-
----
-
-# 📌 Project Status
-
-🚧 Currently under development.
-
-The initial version focuses on:
-
-* CICIDS2017-based detection
-* Graph construction
-* GraphSAGE anomaly detection
-* Event correlation
-* Attack-path reconstruction
-* Risk scoring
-* MITRE ATT&CK mapping
-* Blockchain-based integrity verification
-* FastAPI backend
-* React dashboard
-
----
-
-# 👨‍💻 Team
-
-Developed as a cybersecurity and AI project.
-
-**CYBER-GRAPH**
-
-> Turning security events into an understandable attack story.
-
-```
-
-This version is intentionally **basic and readable**: someone opening your GitHub repository can understand the **entire project from top to bottom without being overwhelmed by implementation details**. It also follows the actual architecture and features in your project document rather than adding unrelated functionality.
-
-If you want, I can also make a **more professional “top GitHub repository” version** with badges, screenshots section, demo section, installation commands, and a polished architecture diagram.
-```
